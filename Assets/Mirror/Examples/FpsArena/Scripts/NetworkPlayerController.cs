@@ -1,6 +1,3 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class NetworkPlayerController : MonoBehaviour
@@ -67,19 +64,6 @@ public class NetworkPlayerController : MonoBehaviour
         previousPosition = transform.position;
         targetPosition = transform.position;
         StoreLastInput();
-
-
-        if (animator != null)
-        {
-            foreach (AnimatorControllerParameter param in animator.parameters)
-            {
-                Debug.Log("Parameter: " + param.name + " (Type: " + param.type + ")");
-            }
-        }
-        else
-        {
-            Debug.Log("No Animator component found on this GameObject.");
-        }
     }
 
     void SelectWeapon()
@@ -147,6 +131,10 @@ public class NetworkPlayerController : MonoBehaviour
 
     void SetAnimations()
     {
+        // animator.Play("ThirdPersonArmAnimationRecoil");
+        animator.Play("New State");
+
+        animator.SetLayerWeight(animator.GetLayerIndex("Arm Layer"), 1.0f);
         animator.SetBool("IDLE", state == MoveState.IDLE);
         animator.SetBool("WALKING", state == MoveState.WALKING);
         animator.SetBool("RUNNING", state == MoveState.RUNNING);
