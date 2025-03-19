@@ -10,6 +10,9 @@ public class NetworkPlayerController : MonoBehaviour
 
     public Transform playerCameraTransform;
     public Transform gunPositionTransform;
+    public Transform headTransform;
+    public Transform armTransform;
+
     public float gravity = 9.81f;
     public float moveSpeed = 10;
     public float sprintSpeed = 15f;
@@ -127,6 +130,15 @@ public class NetworkPlayerController : MonoBehaviour
         playerCamera.transform.position = playerCameraTransform.position;
         playerCamera.transform.rotation = Quaternion.Euler(_lastInputs.LookAxis.y, _lastInputs.LookAxis.x, 0f);
         gunPositionTransform.rotation = playerCamera.transform.rotation;
+
+
+        Vector3 currentEuler = headTransform.rotation.eulerAngles;
+        currentEuler.x = _lastInputs.LookAxis.y;
+        headTransform.rotation = Quaternion.Euler(currentEuler);
+
+        currentEuler = armTransform.rotation.eulerAngles;
+        currentEuler.z = _lastInputs.LookAxis.y + 90;
+        armTransform.rotation = Quaternion.Euler(currentEuler);
     }
 
     void SetAnimations()
