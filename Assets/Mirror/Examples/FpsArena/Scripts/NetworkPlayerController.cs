@@ -12,6 +12,7 @@ public class NetworkPlayerController : MonoBehaviour
     private const string VerticalInput = "Vertical";
 
     public Transform playerCameraTransform;
+    public Transform gunPositionTransform;
     public float gravity = 9.81f;
     public float moveSpeed = 10;
     public float sprintSpeed = 15f;
@@ -53,6 +54,7 @@ public class NetworkPlayerController : MonoBehaviour
     CharacterController characterController;
     Animator animator;
 
+    private WeaponType activeWeapon = WeaponType.Pistol;
     // Start is called before the first frame update
     void Start()
     {
@@ -65,8 +67,25 @@ public class NetworkPlayerController : MonoBehaviour
         previousPosition = transform.position;
         targetPosition = transform.position;
         StoreLastInput();
+
+
+        if (animator != null)
+        {
+            foreach (AnimatorControllerParameter param in animator.parameters)
+            {
+                Debug.Log("Parameter: " + param.name + " (Type: " + param.type + ")");
+            }
+        }
+        else
+        {
+            Debug.Log("No Animator component found on this GameObject.");
+        }
     }
 
+    void SelectWeapon()
+    {
+
+    }
     private void StoreLastInput()
     {
         _lastInputs.MoveAxis = new Vector2(Input.GetAxisRaw(VerticalInput), Input.GetAxisRaw(HorizontalInput));
@@ -123,6 +142,7 @@ public class NetworkPlayerController : MonoBehaviour
         // Apply changes to the camera itself
         playerCamera.transform.position = playerCameraTransform.position;
         playerCamera.transform.rotation = Quaternion.Euler(_lastInputs.LookAxis.y, _lastInputs.LookAxis.x, 0f);
+        gunPositionTransform.rotation = playerCamera.transform.rotation;
     }
 
     void SetAnimations()
