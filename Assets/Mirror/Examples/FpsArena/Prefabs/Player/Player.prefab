@@ -24,7 +24,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 165799639608584427}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 2.046, z: 0}
+  m_LocalPosition: {x: 0, y: 3.14, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -218,7 +218,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2355600099827722640}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 2.046, z: 0}
+  m_LocalPosition: {x: 0, y: 3.14, z: 0}
   m_LocalScale: {x: 0.25, y: 0.25, z: 0.25}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -436,7 +436,6 @@ GameObject:
   - component: {fileID: 5494952544308740967}
   - component: {fileID: -3946790939204706219}
   - component: {fileID: 5494952544308740987}
-  - component: {fileID: -1369090521221337779}
   - component: {fileID: 5953581952208568354}
   - component: {fileID: 1748459422501443265}
   m_Layer: 0
@@ -602,20 +601,6 @@ Rigidbody:
   m_Interpolate: 1
   m_Constraints: 0
   m_CollisionDetection: 1
---- !u!136 &-1369090521221337779
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5494952544308740986}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 0
-  m_Enabled: 1
-  m_Radius: 0.6
-  m_Height: 3.7
-  m_Direction: 1
-  m_Center: {x: 0, y: 0.76, z: 0}
 --- !u!143 &5953581952208568354
 CharacterController:
   m_ObjectHideFlags: 0
@@ -627,13 +612,13 @@ CharacterController:
   m_IsTrigger: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Height: 2
-  m_Radius: 0.5
+  m_Height: 3.7
+  m_Radius: 0.6
   m_SlopeLimit: 45
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Center: {x: 0, y: 1.9, z: 0}
 --- !u!114 &1748459422501443265
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -651,11 +636,14 @@ MonoBehaviour:
   fakeGunHolder: {fileID: 2101481725573906499}
   headTransform: {fileID: 1379286402666186988}
   armTransform: {fileID: 1101686421863542242}
+  characterBody: {fileID: 8278660829912140681}
   gravity: 9.81
   moveSpeed: 10
   sprintSpeed: 15
   jumpHeight: 3
   mouseSensitivity: 5
+  manualCrouch: 0
+  center: 2
 --- !u!1 &8455811761315283861
 GameObject:
   m_ObjectHideFlags: 0
@@ -1528,7 +1516,7 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: 38f8f72a2b1da474f81c1e0f227bdaed,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: -1.05
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 38f8f72a2b1da474f81c1e0f227bdaed,
         type: 3}

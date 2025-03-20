@@ -14,13 +14,13 @@ public class NetworkPlayerController : MonoBehaviour
     public GameObject fakeGunHolder;
     public Transform headTransform;
     public Transform armTransform;
+    public Transform characterBody;
 
     public float gravity = 9.81f;
     public float moveSpeed = 10;
     public float sprintSpeed = 15f;
     public float jumpHeight = 3f;
     public float mouseSensitivity = 1f;
-
 
     private Vector3 velocity;
     private Vector3 previousPosition;
@@ -76,8 +76,6 @@ public class NetworkPlayerController : MonoBehaviour
         foreach (MeshRenderer gunRendered in fakeGunHolder.GetComponentsInChildren<MeshRenderer>())
             gunRendered.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
 
-
-
         characterController = GetComponent<CharacterController>();
         animator = GetComponentInChildren<Animator>();
         playerCamera = FindObjectOfType<PlayerCamera>();
@@ -102,6 +100,7 @@ public class NetworkPlayerController : MonoBehaviour
         _lastInputs.MoveAxis = new Vector2(Input.GetAxisRaw(VerticalInput), Input.GetAxisRaw(HorizontalInput));
         _lastInputs.Jump = Input.GetKey(KeyCode.Space);
         _lastInputs.Run = Input.GetKey(KeyCode.LeftShift);
+        _lastInputs.Crouch = Input.GetKey(KeyCode.LeftControl);
 
         // update rotation incrementally until its needed
         _lastInputs.LookAxis.x += Input.GetAxisRaw(MouseXInput) * mouseSensitivity;
@@ -118,12 +117,20 @@ public class NetworkPlayerController : MonoBehaviour
 
         transform.rotation = characterRotation;
 
+        // Crouch the controller
+        characterController.height = _lastInputs.Crouch ? 2.6f : 3.7f;
+
+        // Fake crouch animation!
+        characterController.center = new Vector3(0, _lastInputs.Crouch ? 2.3f : 1.9f, 0f);
+        characterBody.transform.localScale = new Vector3(0.97f, _lastInputs.Crouch ? 0.7f : 0.97f, 0.97f);
+        characterBody.transform.localPosition = new Vector3(0, _lastInputs.Crouch ? 1f : 0, -0.25f);
+
         // Convert your 2D input to a 3D local move vector
         Vector3 moveDirection = characterRotation * new Vector3(_lastInputs.MoveAxis.y, 0, _lastInputs.MoveAxis.x).normalized;
 
         // Use rotatedMove to compute horizontal velocity
-        velocity.x = moveDirection.x * (_lastInputs.Run ? sprintSpeed : moveSpeed);
-        velocity.z = moveDirection.z * (_lastInputs.Run ? sprintSpeed : moveSpeed);
+        velocity.x = moveDirection.x * (_lastInputs.Run ? sprintSpeed : moveSpeed) * (_lastInputs.Crouch ? 0.5f : 1f);
+        velocity.z = moveDirection.z * (_lastInputs.Run ? sprintSpeed : moveSpeed) * (_lastInputs.Crouch ? 0.5f : 1f);
 
         if (!IsGrounded())
             state = MoveState.AIRBORNE;
@@ -138,7 +145,6 @@ public class NetworkPlayerController : MonoBehaviour
 
         characterController.Move(velocity * Time.fixedDeltaTime);
     }
-
 
     // Update is called once per frame
     void Update()
