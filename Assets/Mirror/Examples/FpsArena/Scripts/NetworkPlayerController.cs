@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public class NetworkPlayerController : MonoBehaviour
 {
@@ -66,6 +67,9 @@ public class NetworkPlayerController : MonoBehaviour
     void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
+
+        SkinnedMeshRenderer skinnedRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
+        skinnedRenderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
 
         characterController = GetComponent<CharacterController>();
         animator = GetComponentInChildren<Animator>();
