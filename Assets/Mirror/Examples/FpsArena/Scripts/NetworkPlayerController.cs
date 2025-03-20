@@ -11,6 +11,7 @@ public class NetworkPlayerController : MonoBehaviour
 
     public Transform playerCameraTransform;
     public Transform gunPositionTransform;
+    public GameObject fakeGunHolder;
     public Transform headTransform;
     public Transform armTransform;
 
@@ -68,8 +69,14 @@ public class NetworkPlayerController : MonoBehaviour
     {
         Cursor.lockState = CursorLockMode.Locked;
 
+        // local player stuff
         SkinnedMeshRenderer skinnedRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
         skinnedRenderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+
+        foreach (MeshRenderer gunRendered in fakeGunHolder.GetComponentsInChildren<MeshRenderer>())
+            gunRendered.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+
+
 
         characterController = GetComponent<CharacterController>();
         animator = GetComponentInChildren<Animator>();
