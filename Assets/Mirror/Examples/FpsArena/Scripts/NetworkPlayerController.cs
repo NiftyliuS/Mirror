@@ -22,7 +22,13 @@ public class NetworkPlayerController : MonoBehaviour
 
     private Vector3 velocity;
     private Vector3 previousPosition;
+    private Quaternion previousRotation;
+    private Quaternion previousLook;
+
     private Vector3 targetPosition;
+    private Quaternion targetRotation;
+    private Quaternion targetLook;
+
     MoveState state = MoveState.IDLE;
     PlayerCamera playerCamera;
 
@@ -55,6 +61,7 @@ public class NetworkPlayerController : MonoBehaviour
     Animator animator;
 
     private WeaponType activeWeapon = WeaponType.Pistol;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -65,14 +72,20 @@ public class NetworkPlayerController : MonoBehaviour
         playerCamera = FindObjectOfType<PlayerCamera>();
 
         previousPosition = transform.position;
+        previousRotation = transform.rotation;
+        previousLook = transform.rotation;
+
         targetPosition = transform.position;
+        targetRotation = transform.rotation;
+        targetLook = transform.rotation;
+
         StoreLastInput();
     }
 
     void SelectWeapon()
     {
-
     }
+
     private void StoreLastInput()
     {
         _lastInputs.MoveAxis = new Vector2(Input.GetAxisRaw(VerticalInput), Input.GetAxisRaw(HorizontalInput));
@@ -90,6 +103,8 @@ public class NetworkPlayerController : MonoBehaviour
     private void ApplyMovement()
     {
         var characterRotation = Quaternion.Euler(0, _lastInputs.LookAxis.x, 0);
+        gunPositionTransform.rotation = Quaternion.Euler(_lastInputs.LookAxis.y, _lastInputs.LookAxis.x, 0f);
+
         transform.rotation = characterRotation;
 
         // Convert your 2D input to a 3D local move vector
@@ -123,22 +138,28 @@ public class NetworkPlayerController : MonoBehaviour
     {
         StoreLastInput();
 
+        // Interpolate
         float t = (Time.time - Time.fixedTime) / Time.fixedDeltaTime;
         transform.position = Vector3.Lerp(previousPosition, targetPosition, t);
+        transform.rotation = Quaternion.Lerp(previousRotation, targetRotation, t);
+        gunPositionTransform.rotation = Quaternion.Lerp(previousLook, targetLook, t);
 
-        // Apply changes to the camera itself
+        // Apply changes to the camera itself and the gun holder - local player only
         playerCamera.transform.position = playerCameraTransform.position;
         playerCamera.transform.rotation = Quaternion.Euler(_lastInputs.LookAxis.y, _lastInputs.LookAxis.x, 0f);
         gunPositionTransform.rotation = playerCamera.transform.rotation;
 
+        RotateHeadAndArm();
+    }
 
-        Vector3 currentEuler = headTransform.rotation.eulerAngles;
-        currentEuler.x = _lastInputs.LookAxis.y;
-        headTransform.rotation = Quaternion.Euler(currentEuler);
-
-        currentEuler = armTransform.rotation.eulerAngles;
-        currentEuler.z = _lastInputs.LookAxis.y + 90;
-        armTransform.rotation = Quaternion.Euler(currentEuler);
+    void RotateHeadAndArm()
+    {
+        // For head, you can directly assign the rotation
+        headTransform.rotation = gunPositionTransform.rotation;
+        // For arm, use the Euler angle and add your offset
+        Vector3 armEuler = armTransform.rotation.eulerAngles;
+        armEuler.z = gunPositionTransform.rotation.eulerAngles.x + 90f;
+        armTransform.rotation = Quaternion.Euler(armEuler);
     }
 
     void SetAnimations()
@@ -157,9 +178,13 @@ public class NetworkPlayerController : MonoBehaviour
     {
         transform.position = targetPosition;
         previousPosition = transform.position;
+        previousRotation = transform.rotation;
+        previousLook = gunPositionTransform.rotation;
         ApplyMovement();
         SetAnimations();
         targetPosition = transform.position;
+        targetRotation = transform.rotation;
+        targetLook = gunPositionTransform.rotation;
     }
 
     private bool IsGrounded() => characterController.isGrounded;
