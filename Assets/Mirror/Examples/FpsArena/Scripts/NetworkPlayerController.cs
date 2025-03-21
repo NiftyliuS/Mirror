@@ -1,7 +1,10 @@
+using System;
+using Mirror;
+using Mirror.Components.Experimental;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-public class NetworkPlayerController : MonoBehaviour
+public class NetworkPlayerController : NetworkPlayerControllerBase
 {
     private const string MouseXInput = "Mouse X";
     private const string MouseYInput = "Mouse Y";
@@ -27,9 +30,9 @@ public class NetworkPlayerController : MonoBehaviour
     private Quaternion previousRotation;
     private Quaternion previousLook;
 
-    private Vector3 targetPosition;
-    private Quaternion targetRotation;
-    private Quaternion targetLook;
+    private Vector3 transientPosition;
+    private Quaternion transientRotation;
+    private Quaternion transientLook;
 
     MoveState state = MoveState.IDLE;
     PlayerCamera playerCamera;
@@ -37,12 +40,12 @@ public class NetworkPlayerController : MonoBehaviour
 
     public enum MoveState : byte { IDLE, WALKING, RUNNING, AIRBORNE }
 
-    public enum WeaponType
+    public enum WeaponType : byte
     {
-        Pistol,
-        Rifle,
-        Shotgun,
-        Sniper
+        Pistol = 0,
+        Rifle = 1,
+        Shotgun = 2,
+        Sniper = 3
     }
 
     public struct PlayerCharacterInputs
@@ -58,113 +61,199 @@ public class NetworkPlayerController : MonoBehaviour
         public bool RightMouse;
     }
 
-    PlayerCharacterInputs _lastInputs;
+    PlayerCharacterInputs nextInputs;
+    PlayerCharacterInputs tickInputs;
     CharacterController characterController;
     Animator animator;
 
-    private WeaponType activeWeapon = WeaponType.Pistol;
+    WeaponType activeWeapon = WeaponType.Pistol;
+
 
     // Start is called before the first frame update
     void Start()
     {
-        Cursor.lockState = CursorLockMode.Locked;
-
-        // local player stuff
-        SkinnedMeshRenderer skinnedRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
-        skinnedRenderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
-
-        foreach (MeshRenderer gunRendered in fakeGunHolder.GetComponentsInChildren<MeshRenderer>())
-            gunRendered.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
-
         characterController = GetComponent<CharacterController>();
         animator = GetComponentInChildren<Animator>();
-        playerCamera = FindObjectOfType<PlayerCamera>();
 
         previousPosition = transform.position;
         previousRotation = transform.rotation;
         previousLook = transform.rotation;
 
-        targetPosition = transform.position;
-        targetRotation = transform.rotation;
-        targetLook = transform.rotation;
+        transientPosition = transform.position;
+        transientRotation = transform.rotation;
+        transientLook = transform.rotation;
 
-        StoreLastInput();
+        if (isLocalPlayer)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            SkinnedMeshRenderer skinnedRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
+            skinnedRenderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+
+            foreach (MeshRenderer gunRendered in fakeGunHolder.GetComponentsInChildren<MeshRenderer>())
+                gunRendered.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+
+            StoreLastInput();
+            playerCamera = FindObjectOfType<PlayerCamera>();
+        }
     }
 
-    void SelectWeapon()
+    public override NetworkPlayerInputs GetPlayerInputs()
     {
+        NetworkWriter writer = new NetworkWriter();
+        int packedInt = 0;
+
+        // Booleans
+        packedInt |= nextInputs.Jump ? 1 << 0 : 0; // Bit 0
+        packedInt |= nextInputs.Crouch ? 1 << 1 : 0; // Bit 1
+        packedInt |= nextInputs.Run ? 1 << 2 : 0; // Bit 2
+        packedInt |= nextInputs.Reload ? 1 << 3 : 0; // Bit 3
+        packedInt |= nextInputs.LeftMouse ? 1 << 4 : 0; // Bit 4
+        packedInt |= nextInputs.RightMouse ? 1 << 5 : 0; // Bit 5
+
+        // WeaponType in bits 6–7
+        int weaponVal = ((int)nextInputs.ActiveWeapon & 0x03) << 6;
+        packedInt |= weaponVal;
+
+        writer.WriteByte((byte)packedInt);
+
+        return new NetworkPlayerInputs() { MovementVector = nextInputs.MoveAxis, MouseVector = nextInputs.LookAxis, AdditionalInputs = writer.ToArray() };
     }
+
+    public override void SetPlayerInputs(NetworkPlayerInputs inputs)
+    {
+        // Update movement and look axes
+        if (inputs.MovementVector.HasValue) tickInputs.MoveAxis = inputs.MovementVector.Value;
+        if (inputs.MouseVector.HasValue) tickInputs.LookAxis = inputs.MouseVector.Value;
+
+        if (inputs.AdditionalInputs.HasValue && inputs.AdditionalInputs.Value.Length > 0)
+        {
+            byte packedInput = inputs.AdditionalInputs.Value.Span[0];
+
+            // Extract each boolean value using bit masks.
+            tickInputs.Jump = (packedInput & (1 << 0)) != 0;
+            tickInputs.Crouch = (packedInput & (1 << 1)) != 0;
+            tickInputs.Run = (packedInput & (1 << 2)) != 0;
+            tickInputs.Reload = (packedInput & (1 << 3)) != 0;
+            tickInputs.LeftMouse = (packedInput & (1 << 4)) != 0;
+            tickInputs.RightMouse = (packedInput & (1 << 5)) != 0;
+
+            // Extract the 2-bit WeaponType from bits 6–7.
+            int weaponVal = (packedInput >> 6) & 0x03;
+            tickInputs.ActiveWeapon = (WeaponType)weaponVal;
+        }
+    }
+
+    public override NetworkPlayerState GetPlayerState()
+    {
+        NetworkWriter writer = new NetworkWriter();
+        writer.WriteBool(IsGrounded());
+
+        return new NetworkPlayerState() { Position = transientPosition, Rotation = transientRotation, BaseVelocity = velocity };
+    }
+
+    public override void SetPlayerState(NetworkPlayerState state)
+    {
+        if (state.Position.HasValue) transientPosition = state.Position.Value;
+        if (state.Rotation.HasValue) transientRotation = state.Rotation.Value;
+        if (state.BaseVelocity.HasValue) velocity = state.BaseVelocity.Value;
+    }
+
+    public override void ResetPlayerState(NetworkPlayerState state) => SetPlayerState(state);
+
+    public override void ResetPlayerInputs(NetworkPlayerInputs inputs) => SetPlayerInputs(inputs);
+
 
     private void StoreLastInput()
     {
-        _lastInputs.MoveAxis = new Vector2(Input.GetAxisRaw(VerticalInput), Input.GetAxisRaw(HorizontalInput));
-        _lastInputs.Jump = Input.GetKey(KeyCode.Space);
-        _lastInputs.Run = Input.GetKey(KeyCode.LeftShift);
-        _lastInputs.Crouch = Input.GetKey(KeyCode.LeftControl);
+        nextInputs.MoveAxis = new Vector2(Input.GetAxisRaw(VerticalInput), Input.GetAxisRaw(HorizontalInput));
+        nextInputs.Jump = Input.GetKey(KeyCode.Space);
+        nextInputs.Run = Input.GetKey(KeyCode.LeftShift);
+        nextInputs.Crouch = Input.GetKey(KeyCode.LeftControl);
 
         // update rotation incrementally until its needed
-        _lastInputs.LookAxis.x += Input.GetAxisRaw(MouseXInput) * mouseSensitivity;
-        _lastInputs.LookAxis.y -= Input.GetAxisRaw(MouseYInput) * mouseSensitivity;
+        nextInputs.LookAxis.x += Input.GetAxisRaw(MouseXInput) * mouseSensitivity;
+        nextInputs.LookAxis.y -= Input.GetAxisRaw(MouseYInput) * mouseSensitivity;
 
         // limit Y camera movement to prevent head spin
-        _lastInputs.LookAxis.y = Mathf.Clamp(_lastInputs.LookAxis.y, -80f, 80f);
+        nextInputs.LookAxis.y = Mathf.Clamp(nextInputs.LookAxis.y, -80f, 80f);
     }
 
     private void ApplyMovement()
     {
-        var characterRotation = Quaternion.Euler(0, _lastInputs.LookAxis.x, 0);
-        gunPositionTransform.rotation = Quaternion.Euler(_lastInputs.LookAxis.y, _lastInputs.LookAxis.x, 0f);
+        if (characterController is null) return;
 
+        gunPositionTransform.rotation = Quaternion.Euler(tickInputs.LookAxis.y, tickInputs.LookAxis.x, 0f);
+
+        var characterRotation = Quaternion.Euler(0, tickInputs.LookAxis.x, 0);
         transform.rotation = characterRotation;
 
         // Crouch the controller
-        characterController.height = _lastInputs.Crouch ? 2.6f : 3.7f;
+        characterController.height = tickInputs.Crouch ? 2.6f : 3.7f;
 
         // Fake crouch animation!
-        characterController.center = new Vector3(0, _lastInputs.Crouch ? 2.3f : 1.9f, 0f);
-        characterBody.transform.localScale = new Vector3(0.97f, _lastInputs.Crouch ? 0.7f : 0.97f, 0.97f);
-        characterBody.transform.localPosition = new Vector3(0, _lastInputs.Crouch ? 1f : 0, -0.25f);
+        characterController.center = new Vector3(0, tickInputs.Crouch ? 2.3f : 1.9f, 0f);
+        characterBody.transform.localScale = new Vector3(0.97f, tickInputs.Crouch ? 0.7f : 0.97f, 0.97f);
+        characterBody.transform.localPosition = new Vector3(0, tickInputs.Crouch ? 1f : 0, -0.25f);
 
         // Convert your 2D input to a 3D local move vector
-        Vector3 moveDirection = characterRotation * new Vector3(_lastInputs.MoveAxis.y, 0, _lastInputs.MoveAxis.x).normalized;
+        Vector3 moveDirection = characterRotation * new Vector3(tickInputs.MoveAxis.y, 0, tickInputs.MoveAxis.x).normalized;
 
         // Use rotatedMove to compute horizontal velocity
-        velocity.x = moveDirection.x * (_lastInputs.Run ? sprintSpeed : moveSpeed) * (_lastInputs.Crouch ? 0.5f : 1f);
-        velocity.z = moveDirection.z * (_lastInputs.Run ? sprintSpeed : moveSpeed) * (_lastInputs.Crouch ? 0.5f : 1f);
+        velocity.x = moveDirection.x * (tickInputs.Run ? sprintSpeed : moveSpeed) * (tickInputs.Crouch ? 0.5f : 1f);
+        velocity.z = moveDirection.z * (tickInputs.Run ? sprintSpeed : moveSpeed) * (tickInputs.Crouch ? 0.5f : 1f);
 
         if (!IsGrounded())
             state = MoveState.AIRBORNE;
         else if (moveDirection.magnitude > 0)
-            state = _lastInputs.Run ? MoveState.RUNNING : MoveState.WALKING;
+            state = tickInputs.Run ? MoveState.RUNNING : MoveState.WALKING;
         else state = MoveState.IDLE;
 
         if (IsGrounded())
-            velocity.y = _lastInputs.Jump ? Mathf.Sqrt(2f * jumpHeight * gravity * gravity) : -gravity;
+            velocity.y = tickInputs.Jump ? Mathf.Sqrt(2f * jumpHeight * gravity * gravity) : -gravity;
         else
             velocity.y += -gravity * gravity * Time.fixedDeltaTime;
-
         characterController.Move(velocity * Time.fixedDeltaTime);
     }
 
-    // Update is called once per frame
-    void Update()
+    public override void NetworkUpdate(int deltaTicks, float deltaTime)
     {
+        if (!NetworkTick.IsReconciling)
+        {
+            previousPosition = transform.position;
+            previousRotation = transform.rotation;
+            previousLook = gunPositionTransform.rotation;
+        }
+
+        transform.position = transientPosition;
+        transform.rotation = transientRotation;
+        ApplyMovement();
+        SetAnimations();
+        transientPosition = transform.position;
+        transientRotation = transform.rotation;
+        transientLook = gunPositionTransform.rotation;
     }
+
+    private bool IsGrounded() => characterController?.isGrounded ?? false;
 
     void LateUpdate()
     {
-        StoreLastInput();
-
         // Interpolate
         float t = (Time.time - Time.fixedTime) / Time.fixedDeltaTime;
-        transform.position = Vector3.Lerp(previousPosition, targetPosition, t);
-        transform.rotation = Quaternion.Lerp(previousRotation, targetRotation, t);
-        gunPositionTransform.rotation = Quaternion.Lerp(previousLook, targetLook, t);
+        transform.position = Vector3.Lerp(previousPosition, transientPosition, t);
+        transform.rotation = Quaternion.Lerp(previousRotation, transientRotation, t);
+        gunPositionTransform.rotation = Quaternion.Lerp(previousLook, transientLook, t);
 
         // Apply changes to the camera itself and the gun holder - local player only
-        playerCamera.transform.position = playerCameraTransform.position;
-        playerCamera.transform.rotation = Quaternion.Euler(_lastInputs.LookAxis.y, _lastInputs.LookAxis.x, 0f);
-        gunPositionTransform.rotation = playerCamera.transform.rotation;
+        if (isLocalPlayer)
+        {
+            StoreLastInput();
+            playerCamera.transform.position = playerCameraTransform.position;
+            playerCamera.transform.rotation = Quaternion.Euler(nextInputs.LookAxis.y, nextInputs.LookAxis.x, 0f);
+            gunPositionTransform.rotation = playerCamera.transform.rotation;
+            // set the gun slightly ahead of the camera to give it some movement when looking up/down
+            gunPositionTransform.position = playerCamera.transform.position +
+                                            Vector3.Normalize(new Vector3(playerCamera.transform.forward.x, 0f, playerCamera.transform.forward.z)) * 0.05f;
+        }
 
         RotateHeadAndArm();
     }
@@ -181,6 +270,7 @@ public class NetworkPlayerController : MonoBehaviour
 
     void SetAnimations()
     {
+        if (animator is null) return;
         // animator.Play("ThirdPersonArmAnimationRecoil");
         animator.Play("New State");
 
@@ -190,19 +280,4 @@ public class NetworkPlayerController : MonoBehaviour
         animator.SetBool("RUNNING", state == MoveState.RUNNING);
         animator.SetBool("AIRBORNE", state == MoveState.AIRBORNE);
     }
-
-    void FixedUpdate()
-    {
-        transform.position = targetPosition;
-        previousPosition = transform.position;
-        previousRotation = transform.rotation;
-        previousLook = gunPositionTransform.rotation;
-        ApplyMovement();
-        SetAnimations();
-        targetPosition = transform.position;
-        targetRotation = transform.rotation;
-        targetLook = gunPositionTransform.rotation;
-    }
-
-    private bool IsGrounded() => characterController.isGrounded;
 }

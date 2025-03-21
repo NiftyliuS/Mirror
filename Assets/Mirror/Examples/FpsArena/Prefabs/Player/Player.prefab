@@ -675,6 +675,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1eacdd2e2535b7d45a7b9fef8b2fecb8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  executionPriority: 1000
+  minCompensationTicks: 1
+  inputsSyncModulus: 25
+  durableInputs: 0
+  stateSyncModulus: 25
+  sendStateChanges: 1
+  durableStates: 0
+  reconcileBy: 7
+  extraReconcileTicks: 0
+  softMicroAdjustments: 1
+  showReconciliationLog: 1
+  showSoftReconciliationLog: 0
   playerCameraTransform: {fileID: 5741080586963324589}
   gunPositionTransform: {fileID: 676755615393887166}
   fakeGunHolder: {fileID: 2101481725573906499}

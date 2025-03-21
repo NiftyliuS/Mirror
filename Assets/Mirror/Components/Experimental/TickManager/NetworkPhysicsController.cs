@@ -32,7 +32,7 @@ namespace Mirror.Components.Experimental{
     public static event Action OnSynchronized;
 
     /// <summary> Ensure that auto physics simulations are disabled. </summary>
-    void Start() => Physics.autoSimulation = false;
+    void Awake() => Physics.autoSimulation = false;
 
     /// <summary>
     /// Advances the game state by a specified number of ticks.
