@@ -684,8 +684,8 @@ MonoBehaviour:
   gravity: 9.81
   moveSpeed: 10
   sprintSpeed: 15
-  jumpHeight: 3
-  mouseSensitivity: 5
+  jumpHeight: 2.5
+  mouseSensitivity: 1
 --- !u!1 &8455811761315283861
 GameObject:
   m_ObjectHideFlags: 0

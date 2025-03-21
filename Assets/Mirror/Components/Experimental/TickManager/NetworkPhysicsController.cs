@@ -31,6 +31,11 @@ namespace Mirror.Components.Experimental{
     /// </summary>
     public static event Action OnSynchronized;
 
+    void Start()
+    {
+        Physics.autoSimulation = false;
+    }
+
     /// <summary>
     /// Advances the game state by a specified number of ticks.
     /// Invokes the TickForwardCallback to allow external classes to handle tick-forwarding logic.
@@ -61,14 +66,14 @@ namespace Mirror.Components.Experimental{
 
     /// <summary>
     /// Executes a single physics simulation step for the given delta time.
-    /// Uses Unity's Physics.Simulate to perform the physics tick. 
+    /// Uses Unity's Physics.Simulate to perform the physics tick.
     /// Typically called with Time.fixedDeltaTime.
     /// </summary>
     /// <param name="deltaTime">The time interval to simulate physics for.</param>
     public virtual void PhysicsTick(float deltaTime) {
       Physics.Simulate(deltaTime); // Using Unity's built-in physics engine.
     }
-    
+
     /// <summary>
     /// Runs the simulation for the specified number of delta ticks.
     /// This method performs multiple steps of entity updates and physics ticks
