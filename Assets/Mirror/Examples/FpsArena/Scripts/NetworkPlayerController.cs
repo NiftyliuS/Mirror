@@ -252,19 +252,9 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
         lineRenderer.SetPosition(0, new Vector3(offsetOrigin.x, offsetOrigin.y + (isLocalPlayer ? 0 : 0.4f), offsetOrigin.z));
 
         if (Physics.Raycast(characterAimTransform.position, characterAimTransform.forward, out hit, maxDistance))
-        {
             lineRenderer.SetPosition(1, hit.point);
-        }
         else
-        {
-            if (isLocalPlayer)
-            {
-            }
-            else
-            {
-                lineRenderer.SetPosition(1, offsetOrigin + direction * maxDistance);
-            }
-        }
+            lineRenderer.SetPosition(1, offsetOrigin + direction * maxDistance);
 
         lineRenderer.enabled = true;
     }
@@ -353,6 +343,9 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
             gunHolder.transform.rotation = playerCamera.transform.rotation;
             // set the gun slightly ahead of the camera to give it some movement when looking up/down
             gunHolder.transform.position = playerCamera.transform.position;
+            if (isLocalPlayer)
+                playerCamera.setFov(nextInputs.RightMouse ? 40 : 60);
+
             if (!nextInputs.RightMouse)
             {
                 gunPosition.localScale = new Vector3(1f, 1f, 1f);

@@ -3,11 +3,16 @@ using UnityEngine;
 public class PlayerCamera : MonoBehaviour
 {
     public Transform cameraPosition;
-
-
-    void Start()
+    Camera camera;
+    void Awake()
     {
-        // Get reference to main camera
+        camera = GetComponent<Camera>();
+    }
+
+    public void setFov(float newFov)
+    {
+        if (camera != null)
+            camera.fieldOfView = newFov;
     }
 
     void LateUpdate()
