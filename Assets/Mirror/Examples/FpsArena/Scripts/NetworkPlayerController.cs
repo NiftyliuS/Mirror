@@ -12,18 +12,21 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
     private const string HorizontalInput = "Horizontal";
     private const string VerticalInput = "Vertical";
 
-    public Transform playerCameraTransform;
+    public Transform characterAimTransform;
     public GameObject gunHolder;
+    public Transform gunPosition;
     public GameObject fakeGunHolder;
     public Transform headTransform;
     public Transform armTransform;
     public Transform characterBody;
+    public GameObject RightArm;
 
     public float gravity = 9.81f;
     public float moveSpeed = 10;
     public float sprintSpeed = 15f;
     public float jumpHeight = 3f;
     public float mouseSensitivity = 1f;
+    public float aimMouseSensitivity = 0.5f;
 
     private Vector3 velocity;
     private Vector3 previousPosition;
@@ -33,10 +36,15 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
     private Vector3 transientPosition;
     private Quaternion transientRotation;
     private Quaternion transientLook;
+    Vector3 defaultGunPosition;
+    Quaternion defaultGunRotation;
 
     MoveState state = MoveState.IDLE;
     PlayerCamera playerCamera;
 
+
+    public float maxDistance = 100f;
+    private LineRenderer lineRenderer;
 
     public enum MoveState : byte { IDLE, WALKING, RUNNING, AIRBORNE }
 
@@ -69,6 +77,17 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
     WeaponType activeWeapon = WeaponType.Pistol;
 
 
+    public struct AdditionalPlayerState
+    {
+        public byte health;
+    }
+
+    AdditionalPlayerState playerState = new AdditionalPlayerState();
+
+    // This is here to FORCE Weaver to serialize the AdditionalPlayerState struct
+    [ClientRpc]
+    void FakeRpc(AdditionalPlayerState state) { }
+
     // Start is called before the first frame update
     void Start()
     {
@@ -82,6 +101,8 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
         transientPosition = transform.position;
         transientRotation = transform.rotation;
         transientLook = transform.rotation;
+        defaultGunPosition = gunPosition.localPosition;
+        defaultGunRotation = gunPosition.localRotation;
 
         if (isLocalPlayer)
         {
@@ -97,8 +118,35 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
         }
         else
         {
-            SetGunHolderVisibility(false);
+            // hide tiny guns inside the head...
+            Renderer[] renderers = gunHolder.GetComponentsInChildren<Renderer>();
+            foreach (Renderer renderer in renderers)
+            {
+                renderer.enabled = false;
+            }
         }
+
+
+        lineRenderer = gameObject.AddComponent<LineRenderer>();
+        lineRenderer.positionCount = 2;
+        lineRenderer.startWidth = 0.05f;
+        lineRenderer.endWidth = 0.05f;
+        lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
+
+        // Set up a gradient for a bullet-fired effect: bright at the start, fading to transparent
+        Gradient gradient = new Gradient();
+        gradient.SetKeys(
+            new GradientColorKey[]
+            {
+                new GradientColorKey(new Color(1f, 0.8f, 0.7f), 0.0f), // bright yellow/orange
+                new GradientColorKey(new Color(1f, 0.8f, 0.5f), 1.0f)
+            },
+            new GradientAlphaKey[]
+            {
+                new GradientAlphaKey(0.3f, 0.0f), new GradientAlphaKey(0.8f, 0.3f), new GradientAlphaKey(1f, 0.5f), new GradientAlphaKey(1f, 1.0f)
+            }
+        );
+        lineRenderer.colorGradient = gradient;
     }
 
     public override NetworkPlayerInputs GetPlayerInputs()
@@ -150,9 +198,15 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
     public override NetworkPlayerState GetPlayerState()
     {
         NetworkWriter writer = new NetworkWriter();
-        writer.WriteBool(IsGrounded());
 
-        return new NetworkPlayerState() { Position = transientPosition, Rotation = transientRotation, BaseVelocity = velocity };
+        writer.Write<AdditionalPlayerState>(playerState);
+
+        var additionalData = writer.ToArray();
+        // Debug.Log(additionalData);
+        return new NetworkPlayerState()
+        {
+            Position = transientPosition, Rotation = transientRotation, BaseVelocity = velocity, AdditionalState = additionalData,
+        };
     }
 
     public override void SetPlayerState(NetworkPlayerState state)
@@ -173,20 +227,56 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
         nextInputs.Jump = Input.GetKey(KeyCode.Space);
         nextInputs.Run = Input.GetKey(KeyCode.LeftShift);
         nextInputs.Crouch = Input.GetKey(KeyCode.LeftControl);
+        nextInputs.LeftMouse = Input.GetMouseButton(0);
+        nextInputs.RightMouse = Input.GetMouseButton(1);
 
         // update rotation incrementally until its needed
-        nextInputs.LookAxis.x += Input.GetAxisRaw(MouseXInput) * mouseSensitivity;
-        nextInputs.LookAxis.y -= Input.GetAxisRaw(MouseYInput) * mouseSensitivity;
+        nextInputs.LookAxis.x += Input.GetAxisRaw(MouseXInput) * (nextInputs.RightMouse ? aimMouseSensitivity : mouseSensitivity);
+        nextInputs.LookAxis.y -= Input.GetAxisRaw(MouseYInput) * (nextInputs.RightMouse ? aimMouseSensitivity : mouseSensitivity);
 
         // limit Y camera movement to prevent head spin
         nextInputs.LookAxis.y = Mathf.Clamp(nextInputs.LookAxis.y, -80f, 80f);
     }
 
+    private void FireGun()
+    {
+        if (NetworkTick.ClientAbsoluteTick % 5 != 0) return;
+        RaycastHit hit;
+        Transform originTransform = isLocalPlayer ? gunPosition.transform : fakeGunHolder.transform;
+        Vector3 origin = originTransform.position;
+        Vector3 direction = originTransform.forward;
+
+        // Offset the origin by 1 meter in the forward direction
+        Vector3 offsetOrigin = origin + direction * (isLocalPlayer ? 1.5f : 3f);
+        // Optionally adjust the y-position if needed
+        lineRenderer.SetPosition(0, new Vector3(offsetOrigin.x, offsetOrigin.y + (isLocalPlayer ? 0 : 0.4f), offsetOrigin.z));
+
+        if (Physics.Raycast(characterAimTransform.position, characterAimTransform.forward, out hit, maxDistance))
+        {
+            lineRenderer.SetPosition(1, hit.point);
+        }
+        else
+        {
+            if (isLocalPlayer)
+            {
+            }
+            else
+            {
+                lineRenderer.SetPosition(1, offsetOrigin + direction * maxDistance);
+            }
+        }
+
+        lineRenderer.enabled = true;
+    }
+
+
     private void ApplyMovement()
     {
         if (characterController is null) return;
 
-        gunHolder.transform.rotation = Quaternion.Euler(tickInputs.LookAxis.y, tickInputs.LookAxis.x, 0f);
+        // Update aiming rotation correctly
+        characterAimTransform.rotation = Quaternion.Euler(tickInputs.LookAxis.y, tickInputs.LookAxis.x, 0f);
+
 
         var characterRotation = Quaternion.Euler(0, tickInputs.LookAxis.x, 0);
         transform.rotation = characterRotation;
@@ -217,6 +307,11 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
         else
             velocity.y += -gravity * gravity * Time.fixedDeltaTime;
         characterController.Move(velocity * Time.fixedDeltaTime);
+
+        if (tickInputs.LeftMouse)
+        {
+            FireGun();
+        }
     }
 
     public override void NetworkUpdate(int deltaTicks, float deltaTime)
@@ -228,8 +323,10 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
             previousLook = gunHolder.transform.rotation;
         }
 
+        if (lineRenderer is not null) lineRenderer.enabled = false;
         transform.position = transientPosition;
         transform.rotation = transientRotation;
+
         ApplyMovement();
         SetAnimations();
         transientPosition = transform.position;
@@ -237,11 +334,11 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
         transientLook = gunHolder.transform.rotation;
     }
 
-    private bool IsGrounded() => characterController?.isGrounded ?? false;
+    bool IsGrounded() => characterController?.isGrounded ?? false;
 
     void LateUpdate()
     {
-        // Interpolate
+        // Interpolate, animate and make things smooth in general
         float t = (Time.time - Time.fixedTime) / Time.fixedDeltaTime;
         transform.position = Vector3.Lerp(previousPosition, transientPosition, t);
         transform.rotation = Quaternion.Lerp(previousRotation, transientRotation, t);
@@ -251,42 +348,48 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
         if (isLocalPlayer)
         {
             StoreLastInput();
-            playerCamera.transform.position = playerCameraTransform.position;
+            playerCamera.transform.position = characterAimTransform.position;
             playerCamera.transform.rotation = Quaternion.Euler(nextInputs.LookAxis.y, nextInputs.LookAxis.x, 0f);
             gunHolder.transform.rotation = playerCamera.transform.rotation;
             // set the gun slightly ahead of the camera to give it some movement when looking up/down
-            gunHolder.transform.position = playerCamera.transform.position +
-                                           Vector3.Normalize(new Vector3(playerCamera.transform.forward.x, 0f, playerCamera.transform.forward.z)) * 0.05f;
+            gunHolder.transform.position = playerCamera.transform.position;
+            if (!nextInputs.RightMouse)
+            {
+                gunPosition.localScale = new Vector3(1f, 1f, 1f);
+                gunPosition.localPosition = defaultGunPosition;
+                gunHolder.transform.position += Vector3.Normalize(
+                    new Vector3(playerCamera.transform.forward.x, 0f, playerCamera.transform.forward.z)) * 0.05f;
+            }
+            else
+            {
+                gunPosition.localScale = new Vector3(2f, 2f, 2f);
+                gunPosition.localPosition = new Vector3(0, -0.45f, 1.5f);
+            }
         }
 
         RotateHeadAndArm();
     }
 
+
     void RotateHeadAndArm()
     {
         // For head, you can directly assign the rotation
-        headTransform.rotation = gunHolder.transform.rotation;
+        headTransform.rotation = characterAimTransform.transform.rotation;
         // For arm, use the Euler angle and add your offset
         Vector3 armEuler = armTransform.rotation.eulerAngles;
-        armEuler.z = gunHolder.transform.rotation.eulerAngles.x + 90f;
+        armEuler.z = characterAimTransform.transform.rotation.eulerAngles.x + 80f;
         armTransform.rotation = Quaternion.Euler(armEuler);
+        if (tickInputs.RightMouse)
+            RightArm.transform.localPosition += new Vector3(0.002f, -0.0052f, -0.0065f);
     }
 
-    void SetGunHolderVisibility(bool visible)
-    {
-        Renderer[] renderers = gunHolder.GetComponentsInChildren<Renderer>();
-        foreach (Renderer renderer in renderers)
-        {
-            renderer.enabled = visible;
-        }
-    }
     void SetAnimations()
     {
         if (animator is null) return;
-        // animator.Play("ThirdPersonArmAnimationRecoil");
-        animator.Play("New State");
 
+        animator.Play(tickInputs.LeftMouse ? "ThirdPersonArmAnimationRecoil" : "New State");
         animator.SetLayerWeight(animator.GetLayerIndex("Arm Layer"), 1.0f);
+
         animator.SetBool("IDLE", state == MoveState.IDLE);
         animator.SetBool("WALKING", state == MoveState.WALKING);
         animator.SetBool("RUNNING", state == MoveState.RUNNING);
