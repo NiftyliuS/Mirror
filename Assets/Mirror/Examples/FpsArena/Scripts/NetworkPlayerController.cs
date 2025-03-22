@@ -13,7 +13,7 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
     private const string VerticalInput = "Vertical";
 
     public Transform playerCameraTransform;
-    public Transform gunPositionTransform;
+    public GameObject gunHolder;
     public GameObject fakeGunHolder;
     public Transform headTransform;
     public Transform armTransform;
@@ -94,6 +94,10 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
 
             StoreLastInput();
             playerCamera = FindObjectOfType<PlayerCamera>();
+        }
+        else
+        {
+            SetGunHolderVisibility(false);
         }
     }
 
@@ -182,7 +186,7 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
     {
         if (characterController is null) return;
 
-        gunPositionTransform.rotation = Quaternion.Euler(tickInputs.LookAxis.y, tickInputs.LookAxis.x, 0f);
+        gunHolder.transform.rotation = Quaternion.Euler(tickInputs.LookAxis.y, tickInputs.LookAxis.x, 0f);
 
         var characterRotation = Quaternion.Euler(0, tickInputs.LookAxis.x, 0);
         transform.rotation = characterRotation;
@@ -221,7 +225,7 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
         {
             previousPosition = transform.position;
             previousRotation = transform.rotation;
-            previousLook = gunPositionTransform.rotation;
+            previousLook = gunHolder.transform.rotation;
         }
 
         transform.position = transientPosition;
@@ -230,7 +234,7 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
         SetAnimations();
         transientPosition = transform.position;
         transientRotation = transform.rotation;
-        transientLook = gunPositionTransform.rotation;
+        transientLook = gunHolder.transform.rotation;
     }
 
     private bool IsGrounded() => characterController?.isGrounded ?? false;
@@ -241,7 +245,7 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
         float t = (Time.time - Time.fixedTime) / Time.fixedDeltaTime;
         transform.position = Vector3.Lerp(previousPosition, transientPosition, t);
         transform.rotation = Quaternion.Lerp(previousRotation, transientRotation, t);
-        gunPositionTransform.rotation = Quaternion.Lerp(previousLook, transientLook, t);
+        gunHolder.transform.rotation = Quaternion.Lerp(previousLook, transientLook, t);
 
         // Apply changes to the camera itself and the gun holder - local player only
         if (isLocalPlayer)
@@ -249,10 +253,10 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
             StoreLastInput();
             playerCamera.transform.position = playerCameraTransform.position;
             playerCamera.transform.rotation = Quaternion.Euler(nextInputs.LookAxis.y, nextInputs.LookAxis.x, 0f);
-            gunPositionTransform.rotation = playerCamera.transform.rotation;
+            gunHolder.transform.rotation = playerCamera.transform.rotation;
             // set the gun slightly ahead of the camera to give it some movement when looking up/down
-            gunPositionTransform.position = playerCamera.transform.position +
-                                            Vector3.Normalize(new Vector3(playerCamera.transform.forward.x, 0f, playerCamera.transform.forward.z)) * 0.05f;
+            gunHolder.transform.position = playerCamera.transform.position +
+                                           Vector3.Normalize(new Vector3(playerCamera.transform.forward.x, 0f, playerCamera.transform.forward.z)) * 0.05f;
         }
 
         RotateHeadAndArm();
@@ -261,13 +265,21 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
     void RotateHeadAndArm()
     {
         // For head, you can directly assign the rotation
-        headTransform.rotation = gunPositionTransform.rotation;
+        headTransform.rotation = gunHolder.transform.rotation;
         // For arm, use the Euler angle and add your offset
         Vector3 armEuler = armTransform.rotation.eulerAngles;
-        armEuler.z = gunPositionTransform.rotation.eulerAngles.x + 90f;
+        armEuler.z = gunHolder.transform.rotation.eulerAngles.x + 90f;
         armTransform.rotation = Quaternion.Euler(armEuler);
     }
 
+    void SetGunHolderVisibility(bool visible)
+    {
+        Renderer[] renderers = gunHolder.GetComponentsInChildren<Renderer>();
+        foreach (Renderer renderer in renderers)
+        {
+            renderer.enabled = visible;
+        }
+    }
     void SetAnimations()
     {
         if (animator is null) return;

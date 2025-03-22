@@ -691,7 +691,7 @@ MonoBehaviour:
   showReconciliationLog: 1
   showSoftReconciliationLog: 0
   playerCameraTransform: {fileID: 5741080586963324589}
-  gunPositionTransform: {fileID: 676755615393887166}
+  gunHolder: {fileID: 2355600099827722640}
   fakeGunHolder: {fileID: 2101481725573906499}
   headTransform: {fileID: 1379286402666186988}
   armTransform: {fileID: 1101686421863542242}
