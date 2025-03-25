@@ -966,6 +966,11 @@ PrefabInstance:
       propertyPath: replica
       value: 
       objectReference: {fileID: 8280980583767039555}
+    - target: {fileID: 1642229985434895887, guid: b2ffa22a7930c4775aea489891b4d9e0,
+        type: 3}
+      propertyPath: cooldownTime
+      value: 0.25
+      objectReference: {fileID: 0}
     - target: {fileID: 3380972446128673875, guid: b2ffa22a7930c4775aea489891b4d9e0,
         type: 3}
       propertyPath: m_Layer
@@ -2286,12 +2291,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   name: Shotgun
   maxDistance: 100
-  damage: 40
-  cooldownTime: 0.1
-  recoilY: 5
+  damage: 15
+  cooldownTime: 0.35
+  recoilY: 4
   recoilX: -1
   replica: {fileID: 4965896001170623546}
-  reloadTime: 1
+  reloadTime: 2
   maxAmmo: 8
   lowerAmount: 0.2
 --- !u!4 &6399815278577865718 stripped

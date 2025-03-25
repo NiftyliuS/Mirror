@@ -79,9 +79,6 @@ namespace Mirror.Examples.FpsArena.Scripts
         CharacterController characterController;
         Animator animator;
 
-        WeaponType activeWeapon = WeaponType.Sniper;
-
-
         AdditionalNetworkPlayerState playerState = new AdditionalNetworkPlayerState();
 
         void InitLineRenderer()
@@ -214,7 +211,10 @@ namespace Mirror.Examples.FpsArena.Scripts
         public override NetworkPlayerState GetPlayerState()
         {
             NetworkWriter writer = new NetworkWriter();
-
+            playerState.PistolAmmo = pistol.GetMagazine();
+            playerState.RifleAmmo = rifle.GetMagazine();
+            playerState.ShotgunAmmo = shotgun.GetMagazine();
+            playerState.SniperAmmo = sniper.GetMagazine();
             writer.Write(playerState);
 
             var additionalData = writer.ToArray();
@@ -239,24 +239,22 @@ namespace Mirror.Examples.FpsArena.Scripts
 
         GunScript GetActiveGun()
         {
-            if (activeWeapon == WeaponType.Rifle) return rifle;
-            if (activeWeapon == WeaponType.Shotgun) return shotgun;
-            if (activeWeapon == WeaponType.Sniper) return sniper;
+            if (playerState.ActiveWeapon == (byte)WeaponType.Rifle) return rifle;
+            if (playerState.ActiveWeapon == (byte)WeaponType.Shotgun) return shotgun;
+            if (playerState.ActiveWeapon == (byte)WeaponType.Sniper) return sniper;
             return pistol;
         }
 
         void SelectGun(WeaponType gunType)
         {
-            if (activeWeapon != gunType)
-            {
-                activeWeapon = gunType;
+            playerState.ActiveWeapon = (byte)gunType;
 
-                pistol.SetEnabled(gunType == WeaponType.Pistol, isLocalPlayer, playerState.SinceReload);
-                rifle.SetEnabled(gunType == WeaponType.Rifle, isLocalPlayer, playerState.SinceReload);
-                shotgun.SetEnabled(gunType == WeaponType.Shotgun, isLocalPlayer, playerState.SinceReload);
-                sniper.SetEnabled(gunType == WeaponType.Sniper, isLocalPlayer, playerState.SinceReload);
-            }
+            pistol.SetEnabled(gunType == WeaponType.Pistol, isLocalPlayer, playerState.SinceReload);
+            rifle.SetEnabled(gunType == WeaponType.Rifle, isLocalPlayer, playerState.SinceReload);
+            shotgun.SetEnabled(gunType == WeaponType.Shotgun, isLocalPlayer, playerState.SinceReload);
+            sniper.SetEnabled(gunType == WeaponType.Sniper, isLocalPlayer, playerState.SinceReload);
         }
+
         void ReloadGun()
         {
             var gun = GetActiveGun();
@@ -266,6 +264,27 @@ namespace Mirror.Examples.FpsArena.Scripts
                 playerState.SinceReload = 0;
                 Debug.Log("Reloading!");
             }
+        }
+
+        // Example of how to force reconcile based on custom parameters
+        protected override bool CustomReconcileCheck(NetworkPlayerState localState, NetworkPlayerState remoteState)
+        {
+            if (!localState.AdditionalState.HasValue || !remoteState.AdditionalState.HasValue) return false;
+            var local = new NetworkReader(localState.AdditionalState.Value.ToArray())
+                .Read<AdditionalNetworkPlayerState>();
+            var remote = new NetworkReader(remoteState.AdditionalState.Value.ToArray())
+                .Read<AdditionalNetworkPlayerState>();
+
+            return (
+                local.Health != remote.Health
+                || local.ActiveWeapon != remote.ActiveWeapon
+                || local.SinceFire != remote.SinceFire
+                || local.SinceReload != remote.SinceReload
+                || local.PistolAmmo != remote.PistolAmmo
+                || local.RifleAmmo != remote.RifleAmmo
+                || local.ShotgunAmmo != remote.ShotgunAmmo
+                || local.SniperAmmo != remote.SniperAmmo
+            );
         }
 
         private void FireGun()
@@ -307,7 +326,9 @@ namespace Mirror.Examples.FpsArena.Scripts
         {
             if (characterController is null) return;
 
-            SelectGun( (WeaponType)tickInputs.ActiveWeapon);
+            // Select user specified gun if not yet selected
+            SelectGun((WeaponType)tickInputs.ActiveWeapon);
+
             // Update gun tickers
             playerState.SinceFire = (byte)Math.Min(playerState.SinceFire + 1, 250);
             playerState.SinceReload = (byte)Math.Min(playerState.SinceReload + 1, 250);
@@ -364,7 +385,7 @@ namespace Mirror.Examples.FpsArena.Scripts
                 previousLook = gunHolder.transform.rotation;
             }
 
-            if(lineRenderer is not null) lineRenderer.enabled = false;
+            if (lineRenderer is not null) lineRenderer.enabled = false;
             transform.position = transientPosition;
             transform.rotation = transientRotation;
 
@@ -392,9 +413,9 @@ namespace Mirror.Examples.FpsArena.Scripts
 
             float scrollInput = Input.GetAxis(MouseScrollInput);
             if (scrollInput > 0)
-                nextInputs.ActiveWeapon = (WeaponType)(((byte)activeWeapon + 1) % 4);
+                nextInputs.ActiveWeapon = (WeaponType)(((byte)nextInputs.ActiveWeapon + 1) % 4);
             else if (scrollInput < 0)
-                nextInputs.ActiveWeapon = (WeaponType)(((byte)activeWeapon == 0 ? 3 : (byte)activeWeapon - 1));
+                nextInputs.ActiveWeapon = (WeaponType)(((byte)nextInputs.ActiveWeapon == 0 ? 3 : (byte)nextInputs.ActiveWeapon - 1));
             else if (Input.GetKey(KeyCode.Alpha1)) nextInputs.ActiveWeapon = WeaponType.Pistol;
             else if (Input.GetKey(KeyCode.Alpha2)) nextInputs.ActiveWeapon = WeaponType.Rifle;
             else if (Input.GetKey(KeyCode.Alpha3)) nextInputs.ActiveWeapon = WeaponType.Shotgun;
@@ -477,7 +498,7 @@ namespace Mirror.Examples.FpsArena.Scripts
         {
             if (animator is null) return;
 
-            var isFiring = tickInputs.LeftMouse && GetActiveGun().GetMagazine()>0 && playerState.SinceFire*Time.fixedDeltaTime < 0.12f;
+            var isFiring = tickInputs.LeftMouse && GetActiveGun().GetMagazine() > 0 && playerState.SinceFire * Time.fixedDeltaTime < 0.12f;
 
             animator.Play(isFiring ? "ThirdPersonArmAnimationRecoil" : "New State");
 
