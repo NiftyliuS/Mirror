@@ -118,12 +118,12 @@ public class GunScript : MonoBehaviour
             // Sine easing: at t=0 => 0; t=0.5 => maximum; t=1 => 0.
             float offsetY = -Mathf.Sin(t * Mathf.PI) * lowerAmount;
             transform.localPosition = originalPosition + new Vector3(0, offsetY, 0);
-            replica.transform.localPosition = replicaOriginalPosition + new Vector3(0, offsetY, 0);
+            replica.transform.localPosition = replicaOriginalPosition + new Vector3(0, -offsetY, 0);
 
             // Rotate around the X axis: negative angle to lower the gun.
             float angle = -Mathf.Sin(t * Mathf.PI) * rotationAngle;
             transform.localRotation = originalRotation * Quaternion.Euler(0, angle, 0);
-            replica.transform.localRotation = replicaOriginalRotation * Quaternion.Euler(0, angle, 0);
+            replica.transform.localRotation = replicaOriginalRotation * Quaternion.Euler(angle, 0, 0 );
         }
         else
         {
