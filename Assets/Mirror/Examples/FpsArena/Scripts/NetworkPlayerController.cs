@@ -88,45 +88,8 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
     [ClientRpc]
     void FakeRpc(AdditionalPlayerState state) { }
 
-    // Start is called before the first frame update
-    void Start()
+    void InitLineRenderer()
     {
-        characterController = GetComponent<CharacterController>();
-        animator = GetComponentInChildren<Animator>();
-
-        previousPosition = transform.position;
-        previousRotation = transform.rotation;
-        previousLook = transform.rotation;
-
-        transientPosition = transform.position;
-        transientRotation = transform.rotation;
-        transientLook = transform.rotation;
-        defaultGunPosition = gunPosition.localPosition;
-        defaultGunRotation = gunPosition.localRotation;
-
-        if (isLocalPlayer)
-        {
-            Cursor.lockState = CursorLockMode.Locked;
-            SkinnedMeshRenderer skinnedRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
-            skinnedRenderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
-
-            foreach (MeshRenderer gunRendered in fakeGunHolder.GetComponentsInChildren<MeshRenderer>())
-                gunRendered.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
-
-            StoreLastInput();
-            playerCamera = FindObjectOfType<PlayerCamera>();
-        }
-        else
-        {
-            // hide tiny guns inside the head...
-            Renderer[] renderers = gunHolder.GetComponentsInChildren<Renderer>();
-            foreach (Renderer renderer in renderers)
-            {
-                renderer.enabled = false;
-            }
-        }
-
-
         lineRenderer = gameObject.AddComponent<LineRenderer>();
         lineRenderer.positionCount = 2;
         lineRenderer.startWidth = 0.05f;
@@ -149,6 +112,55 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
         lineRenderer.colorGradient = gradient;
     }
 
+    // Start is called before the first frame update
+    void Start()
+    {
+        if (isLocalPlayer)
+        {
+            // Capture mouse and setup camera
+            Cursor.lockState = CursorLockMode.Locked;
+            playerCamera = FindObjectOfType<PlayerCamera>();
+
+            // make the main body to only cast shadows
+            SkinnedMeshRenderer skinnedRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
+            skinnedRenderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+
+            // Do the same for guns held by the character
+            foreach (MeshRenderer gunRendered in fakeGunHolder.GetComponentsInChildren<MeshRenderer>())
+                gunRendered.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+        }
+
+        // Get attached character controller
+        characterController = GetComponent<CharacterController>();
+
+        // Get animation and give more weight to the Arm Layer
+        animator = GetComponentInChildren<Animator>();
+        animator.SetLayerWeight(animator.GetLayerIndex("Arm Layer"), 1.0f);
+
+        // Setup initial start positions for interpolation
+        previousPosition = transform.position;
+        previousRotation = transform.rotation;
+        previousLook = transform.rotation;
+
+        // Setup initial target positions for interpolation
+        transientPosition = transform.position;
+        transientRotation = transform.rotation;
+        transientLook = transform.rotation;
+
+        // Record tiny guns positin and rotation to rever when not zoomed in easely
+        defaultGunPosition = gunPosition.localPosition;
+        defaultGunRotation = gunPosition.localRotation;
+
+        // hide or show tiny guns inside the head based on if local player or not...
+        Renderer[] renderers = gunHolder.GetComponentsInChildren<Renderer>();
+        foreach (Renderer renderer in renderers) renderer.enabled = isLocalPlayer;
+
+        // Setup the "bullet" trajectory line renderer
+        InitLineRenderer();
+    }
+
+
+    // Simple 8 flags to bye example for key and click inputs
     public override NetworkPlayerInputs GetPlayerInputs()
     {
         NetworkWriter writer = new NetworkWriter();
@@ -171,6 +183,7 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
         return new NetworkPlayerInputs() { MovementVector = nextInputs.MoveAxis, MouseVector = nextInputs.LookAxis, AdditionalInputs = writer.ToArray() };
     }
 
+    // Example of reading key inputs from as single byte
     public override void SetPlayerInputs(NetworkPlayerInputs inputs)
     {
         // Update movement and look axes
@@ -364,6 +377,7 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
     }
 
 
+    // Animations related to gun fire and look direction
     void RotateHeadAndArm()
     {
         // For head, you can directly assign the rotation
@@ -372,16 +386,25 @@ public class NetworkPlayerController : NetworkPlayerControllerBase
         Vector3 armEuler = armTransform.rotation.eulerAngles;
         armEuler.z = characterAimTransform.transform.rotation.eulerAngles.x + 80f;
         armTransform.rotation = Quaternion.Euler(armEuler);
+        // fancy tiny gun animation
+        if (tickInputs.LeftMouse)
+            gunPosition.localPosition += new Vector3(
+                RightArm.transform.localPosition.x * 10f,
+                RightArm.transform.localPosition.y,
+                RightArm.transform.localPosition.z * 100f
+            );
+        // fancy tiny gun zoom in effect
         if (tickInputs.RightMouse)
             RightArm.transform.localPosition += new Vector3(0.002f, -0.0052f, -0.0065f);
     }
 
+    // Character animations togglers
     void SetAnimations()
     {
         if (animator is null) return;
 
         animator.Play(tickInputs.LeftMouse ? "ThirdPersonArmAnimationRecoil" : "New State");
-        animator.SetLayerWeight(animator.GetLayerIndex("Arm Layer"), 1.0f);
+
 
         animator.SetBool("IDLE", state == MoveState.IDLE);
         animator.SetBool("WALKING", state == MoveState.WALKING);
