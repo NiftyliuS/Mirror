@@ -671,7 +671,7 @@ MonoBehaviour:
   inputsSyncModulus: 25
   durableInputs: 0
   stateSyncModulus: 25
-  sendStateChanges: 1
+  sendStateChanges: 0
   durableStates: 0
   reconcileBy: 7
   extraReconcileTicks: 0
@@ -692,6 +692,10 @@ MonoBehaviour:
   jumpHeight: 2.5
   mouseSensitivity: 1
   aimMouseSensitivity: 0.5
+  pistol: {fileID: 6174815315172385799}
+  rifle: {fileID: 8637501133108972944}
+  shotgun: {fileID: 6577911469090497553}
+  sniper: {fileID: 2052227987259804409}
   maxDistance: 100
 --- !u!1 &8455811761315283861
 GameObject:
@@ -737,7 +741,7 @@ PrefabInstance:
     - target: {fileID: 1952209674155351607, guid: 04c7963cbe20e4e62afcf27ef38e8375,
         type: 3}
       propertyPath: m_Name
-      value: MachineGun
+      value: Rifle
       objectReference: {fileID: 0}
     - target: {fileID: 1952209674155351607, guid: 04c7963cbe20e4e62afcf27ef38e8375,
         type: 3}
@@ -841,6 +845,30 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 04c7963cbe20e4e62afcf27ef38e8375, type: 3}
+--- !u!1 &4411068063559163932 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1952209674155351607, guid: 04c7963cbe20e4e62afcf27ef38e8375,
+    type: 3}
+  m_PrefabInstance: {fileID: 2747450114411855403}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &8637501133108972944
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4411068063559163932}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61485c2ab48cb9640beee089d6d1de55, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  name: Rifle
+  maxDistance: 100
+  damage: 40
+  cooldownTime: 0.1
+  reloadTime: 1
+  maxAmmo: 10
 --- !u!4 &6592863771319573774 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 9033774424705491749, guid: 04c7963cbe20e4e62afcf27ef38e8375,
@@ -909,6 +937,11 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1642229985434895887, guid: b2ffa22a7930c4775aea489891b4d9e0,
+        type: 3}
+      propertyPath: name
+      value: Pistol
+      objectReference: {fileID: 0}
     - target: {fileID: 3380972446128673875, guid: b2ffa22a7930c4775aea489891b4d9e0,
         type: 3}
       propertyPath: m_Layer
@@ -967,6 +1000,18 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 4862487544776516104}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &6174815315172385799 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1642229985434895887, guid: b2ffa22a7930c4775aea489891b4d9e0,
+    type: 3}
+  m_PrefabInstance: {fileID: 4862487544776516104}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61485c2ab48cb9640beee089d6d1de55, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &5661481501969393722
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1187,7 +1232,7 @@ PrefabInstance:
     - target: {fileID: 1952209674155351607, guid: 04c7963cbe20e4e62afcf27ef38e8375,
         type: 3}
       propertyPath: m_Name
-      value: MachineGun
+      value: Rifle
       objectReference: {fileID: 0}
     - target: {fileID: 1952209674155351607, guid: 04c7963cbe20e4e62afcf27ef38e8375,
         type: 3}
@@ -1425,6 +1470,30 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 7271502507536173096}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &5734472699302688770 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3133768155433988138, guid: 1da8f4bb8bcef44d88263177561f8777,
+    type: 3}
+  m_PrefabInstance: {fileID: 7271502507536173096}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2052227987259804409
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5734472699302688770}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61485c2ab48cb9640beee089d6d1de55, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  name: Sniper
+  maxDistance: 100
+  damage: 40
+  cooldownTime: 0.1
+  reloadTime: 1
+  maxAmmo: 10
 --- !u!1001 &8419403136977403149
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2139,6 +2208,30 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 30eee2e948ef04bd5bf0fa89fe2e4aa2, type: 3}
+--- !u!1 &5043863808719318941 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3476166011186983223, guid: 30eee2e948ef04bd5bf0fa89fe2e4aa2,
+    type: 3}
+  m_PrefabInstance: {fileID: 8485544727951695530}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6577911469090497553
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5043863808719318941}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61485c2ab48cb9640beee089d6d1de55, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  name: Shotgun
+  maxDistance: 100
+  damage: 40
+  cooldownTime: 0.1
+  reloadTime: 1
+  maxAmmo: 10
 --- !u!4 &6399815278577865718 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3247662603383573852, guid: 30eee2e948ef04bd5bf0fa89fe2e4aa2,

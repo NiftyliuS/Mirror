@@ -1,5 +1,3 @@
-using System;
-using Mirror;
 using Mirror.Components.Experimental;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -30,16 +28,20 @@ namespace Mirror.Examples.FpsArena.Scripts
         public float mouseSensitivity = 1f;
         public float aimMouseSensitivity = 0.5f;
 
-        private Vector3 velocity;
-        private Vector3 previousPosition;
-        private Quaternion previousRotation;
-        private Quaternion previousLook;
+        public GunScript pistol;
+        public GunScript rifle;
+        public GunScript shotgun;
+        public GunScript sniper;
 
-        private Vector3 transientPosition;
-        private Quaternion transientRotation;
-        private Quaternion transientLook;
+        Vector3 velocity;
+        Vector3 previousPosition;
+        Quaternion previousRotation;
+        Quaternion previousLook;
+
+        Vector3 transientPosition;
+        Quaternion transientRotation;
+        Quaternion transientLook;
         Vector3 defaultGunPosition;
-        Quaternion defaultGunRotation;
 
         MoveState state = MoveState.IDLE;
         PlayerCamera playerCamera;
@@ -79,16 +81,7 @@ namespace Mirror.Examples.FpsArena.Scripts
         WeaponType activeWeapon = WeaponType.Pistol;
 
 
-        public struct AdditionalPlayerState
-        {
-            public byte health;
-        }
-
-        AdditionalPlayerState playerState = new AdditionalPlayerState();
-
-        // This is here to FORCE Weaver to serialize the AdditionalPlayerState struct
-        [ClientRpc]
-        void FakeRpc(AdditionalPlayerState state) { }
+        AdditionalNetworkPlayerState playerState = new AdditionalNetworkPlayerState();
 
         void InitLineRenderer()
         {
@@ -117,6 +110,9 @@ namespace Mirror.Examples.FpsArena.Scripts
         // Start is called before the first frame update
         void Start()
         {
+            if (sendStateChanges)
+                Debug.LogWarning("Current weapon setup is not build for 'send state changes'! and will cause a large network overhead.");
+
             if (isLocalPlayer)
             {
                 // Capture mouse and setup camera
@@ -151,7 +147,6 @@ namespace Mirror.Examples.FpsArena.Scripts
 
             // Record tiny guns positin and rotation to rever when not zoomed in easely
             defaultGunPosition = gunPosition.localPosition;
-            defaultGunRotation = gunPosition.localRotation;
 
             // hide or show tiny guns inside the head based on if local player or not...
             Renderer[] renderers = gunHolder.GetComponentsInChildren<Renderer>();
@@ -218,10 +213,10 @@ namespace Mirror.Examples.FpsArena.Scripts
         {
             NetworkWriter writer = new NetworkWriter();
 
-            writer.Write<AdditionalPlayerState>(playerState);
+            writer.Write(playerState);
 
             var additionalData = writer.ToArray();
-            // Debug.Log(additionalData);
+            Debug.Log(additionalData);
             return new NetworkPlayerState()
             {
                 Position = transientPosition, Rotation = transientRotation, BaseVelocity = velocity, AdditionalState = additionalData,
@@ -233,6 +228,11 @@ namespace Mirror.Examples.FpsArena.Scripts
             if (state.Position.HasValue) transientPosition = state.Position.Value;
             if (state.Rotation.HasValue) transientRotation = state.Rotation.Value;
             if (state.BaseVelocity.HasValue) velocity = state.BaseVelocity.Value;
+            if (state.AdditionalState.HasValue)
+            {
+                playerState = new NetworkReader(state.AdditionalState.Value.ToArray())
+                    .Read<AdditionalNetworkPlayerState>();
+            }
         }
 
         private void FireGun()
