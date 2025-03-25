@@ -806,7 +806,7 @@ PrefabInstance:
     - target: {fileID: 9033774424705491749, guid: 04c7963cbe20e4e62afcf27ef38e8375,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9033774424705491749, guid: 04c7963cbe20e4e62afcf27ef38e8375,
         type: 3}
@@ -867,8 +867,12 @@ MonoBehaviour:
   maxDistance: 100
   damage: 40
   cooldownTime: 0.1
+  recoilY: 1
+  recoilX: -0.5
+  replica: {fileID: 5194672112025115801}
   reloadTime: 1
-  maxAmmo: 10
+  maxAmmo: 38
+  lowerAmount: 0.2
 --- !u!4 &6592863771319573774 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 9033774424705491749, guid: 04c7963cbe20e4e62afcf27ef38e8375,
@@ -942,6 +946,26 @@ PrefabInstance:
       propertyPath: name
       value: Pistol
       objectReference: {fileID: 0}
+    - target: {fileID: 1642229985434895887, guid: b2ffa22a7930c4775aea489891b4d9e0,
+        type: 3}
+      propertyPath: maxAmmo
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1642229985434895887, guid: b2ffa22a7930c4775aea489891b4d9e0,
+        type: 3}
+      propertyPath: recoilX
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 1642229985434895887, guid: b2ffa22a7930c4775aea489891b4d9e0,
+        type: 3}
+      propertyPath: recoilY
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 1642229985434895887, guid: b2ffa22a7930c4775aea489891b4d9e0,
+        type: 3}
+      propertyPath: replica
+      value: 
+      objectReference: {fileID: 8280980583767039555}
     - target: {fileID: 3380972446128673875, guid: b2ffa22a7930c4775aea489891b4d9e0,
         type: 3}
       propertyPath: m_Layer
@@ -1104,11 +1128,18 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 6
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 1642229985434895887, guid: b2ffa22a7930c4775aea489891b4d9e0, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: b2ffa22a7930c4775aea489891b4d9e0, type: 3}
 --- !u!4 &6842995256996102299 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1181821618385266849, guid: b2ffa22a7930c4775aea489891b4d9e0,
+    type: 3}
+  m_PrefabInstance: {fileID: 5661481501969393722}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &8280980583767039555 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4357914994961282681, guid: b2ffa22a7930c4775aea489891b4d9e0,
     type: 3}
   m_PrefabInstance: {fileID: 5661481501969393722}
   m_PrefabAsset: {fileID: 0}
@@ -1222,6 +1253,12 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 5976393837137038747}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &8758669011059867057 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3133768155433988138, guid: 1da8f4bb8bcef44d88263177561f8777,
+    type: 3}
+  m_PrefabInstance: {fileID: 5976393837137038747}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &5980932697348817582
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1238,6 +1275,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Layer
       value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1952209674155351607, guid: 04c7963cbe20e4e62afcf27ef38e8375,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3073928686863089226, guid: 04c7963cbe20e4e62afcf27ef38e8375,
         type: 3}
@@ -1319,6 +1361,12 @@ PrefabInstance:
 --- !u!4 &3341357977149546891 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 9033774424705491749, guid: 04c7963cbe20e4e62afcf27ef38e8375,
+    type: 3}
+  m_PrefabInstance: {fileID: 5980932697348817582}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &5194672112025115801 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1952209674155351607, guid: 04c7963cbe20e4e62afcf27ef38e8375,
     type: 3}
   m_PrefabInstance: {fileID: 5980932697348817582}
   m_PrefabAsset: {fileID: 0}
@@ -1491,9 +1539,13 @@ MonoBehaviour:
   name: Sniper
   maxDistance: 100
   damage: 40
-  cooldownTime: 0.1
-  reloadTime: 1
-  maxAmmo: 10
+  cooldownTime: 0.5
+  recoilY: 6
+  recoilX: 0
+  replica: {fileID: 8758669011059867057}
+  reloadTime: 1.5
+  maxAmmo: 12
+  lowerAmount: 0.2
 --- !u!1001 &8419403136977403149
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1588,6 +1640,12 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 30eee2e948ef04bd5bf0fa89fe2e4aa2, type: 3}
+--- !u!1 &4965896001170623546 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3476166011186983223, guid: 30eee2e948ef04bd5bf0fa89fe2e4aa2,
+    type: 3}
+  m_PrefabInstance: {fileID: 8419403136977403149}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &6468780286462619729 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3247662603383573852, guid: 30eee2e948ef04bd5bf0fa89fe2e4aa2,
@@ -2230,8 +2288,12 @@ MonoBehaviour:
   maxDistance: 100
   damage: 40
   cooldownTime: 0.1
+  recoilY: 5
+  recoilX: -1
+  replica: {fileID: 4965896001170623546}
   reloadTime: 1
-  maxAmmo: 10
+  maxAmmo: 8
+  lowerAmount: 0.2
 --- !u!4 &6399815278577865718 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3247662603383573852, guid: 30eee2e948ef04bd5bf0fa89fe2e4aa2,

@@ -1,6 +1,8 @@
+using System;
 using Mirror.Components.Experimental;
 using UnityEngine;
 using UnityEngine.Rendering;
+using Random = UnityEngine.Random;
 
 namespace Mirror.Examples.FpsArena.Scripts
 {
@@ -43,12 +45,11 @@ namespace Mirror.Examples.FpsArena.Scripts
         Quaternion transientLook;
         Vector3 defaultGunPosition;
 
-        MoveState state = MoveState.IDLE;
+        MoveState moveState = MoveState.IDLE;
         PlayerCamera playerCamera;
 
-
         public float maxDistance = 100f;
-        private LineRenderer lineRenderer;
+        LineRenderer lineRenderer;
 
         public enum MoveState : byte { IDLE, WALKING, RUNNING, AIRBORNE }
 
@@ -78,7 +79,7 @@ namespace Mirror.Examples.FpsArena.Scripts
         CharacterController characterController;
         Animator animator;
 
-        WeaponType activeWeapon = WeaponType.Pistol;
+        WeaponType activeWeapon = WeaponType.Sniper;
 
 
         AdditionalNetworkPlayerState playerState = new AdditionalNetworkPlayerState();
@@ -154,8 +155,9 @@ namespace Mirror.Examples.FpsArena.Scripts
 
             // Setup the "bullet" trajectory line renderer
             InitLineRenderer();
-        }
 
+            SelectGun(WeaponType.Sniper);
+        }
 
         // Simple 8 flags to bye example for key and click inputs
         public override NetworkPlayerInputs GetPlayerInputs()
@@ -216,7 +218,7 @@ namespace Mirror.Examples.FpsArena.Scripts
             writer.Write(playerState);
 
             var additionalData = writer.ToArray();
-            Debug.Log(additionalData);
+            // Debug.Log(additionalData);
             return new NetworkPlayerState()
             {
                 Position = transientPosition, Rotation = transientRotation, BaseVelocity = velocity, AdditionalState = additionalData,
@@ -235,9 +237,52 @@ namespace Mirror.Examples.FpsArena.Scripts
             }
         }
 
+        GunScript GetActiveGun()
+        {
+            if (activeWeapon == WeaponType.Rifle) return rifle;
+            if (activeWeapon == WeaponType.Shotgun) return shotgun;
+            if (activeWeapon == WeaponType.Sniper) return sniper;
+            return pistol;
+        }
+
+        void SelectGun(WeaponType gunType)
+        {
+            if (activeWeapon != gunType)
+            {
+                activeWeapon = gunType;
+
+                pistol.SetEnabled(gunType == WeaponType.Pistol, isLocalPlayer, playerState.SinceReload);
+                rifle.SetEnabled(gunType == WeaponType.Rifle, isLocalPlayer, playerState.SinceReload);
+                shotgun.SetEnabled(gunType == WeaponType.Shotgun, isLocalPlayer, playerState.SinceReload);
+                sniper.SetEnabled(gunType == WeaponType.Sniper, isLocalPlayer, playerState.SinceReload);
+            }
+        }
+        void ReloadGun()
+        {
+            var gun = GetActiveGun();
+            if (gun.CanReload())
+            {
+                gun.ReloadMagazine();
+                playerState.SinceReload = 0;
+                Debug.Log("Reloading!");
+            }
+        }
+
         private void FireGun()
         {
-            if (NetworkTick.ClientAbsoluteTick % 5 != 0) return;
+            var gun = GetActiveGun();
+            if (!gun.CanFire(playerState.SinceFire, playerState.SinceReload))
+            {
+                return;
+            }
+
+            nextInputs.LookAxis.x -= gun.recoilX + Random.Range(-gun.recoilX * 0.5f, gun.recoilX * 0.5f);
+            nextInputs.LookAxis.y -= gun.recoilY + Random.Range(-gun.recoilY * 0.5f, gun.recoilY * 0.5f);
+
+            playerState.SinceFire = 0;
+            gun.ReduceMagazine();
+            Debug.Log(gun.name + " " + gun.GetMagazine());
+
             RaycastHit hit;
             Transform originTransform = isLocalPlayer ? gunPosition.transform : fakeGunHolder.transform;
             Vector3 origin = originTransform.position;
@@ -262,6 +307,11 @@ namespace Mirror.Examples.FpsArena.Scripts
         {
             if (characterController is null) return;
 
+            SelectGun( (WeaponType)tickInputs.ActiveWeapon);
+            // Update gun tickers
+            playerState.SinceFire = (byte)Math.Min(playerState.SinceFire + 1, 250);
+            playerState.SinceReload = (byte)Math.Min(playerState.SinceReload + 1, 250);
+
             // Update aiming rotation correctly
             characterAimTransform.rotation = Quaternion.Euler(tickInputs.LookAxis.y, tickInputs.LookAxis.x, 0f);
 
@@ -285,10 +335,10 @@ namespace Mirror.Examples.FpsArena.Scripts
 
             // Determine animation state
             if (!IsGrounded())
-                state = MoveState.AIRBORNE;
+                moveState = MoveState.AIRBORNE;
             else if (moveDirection.magnitude > 0)
-                state = tickInputs.Run ? MoveState.RUNNING : MoveState.WALKING;
-            else state = MoveState.IDLE;
+                moveState = tickInputs.Run ? MoveState.RUNNING : MoveState.WALKING;
+            else moveState = MoveState.IDLE;
 
             // Check if needs to accelerate down or is on the ground ( constant speed )
             if (IsGrounded())
@@ -300,6 +350,7 @@ namespace Mirror.Examples.FpsArena.Scripts
 
             // Check if player wants to fire his gun
             if (tickInputs.LeftMouse) FireGun();
+            if (tickInputs.Reload) ReloadGun();
         }
 
         // Replacement for FixedUpdate that happens once per tick after states and inputs are set
@@ -313,7 +364,7 @@ namespace Mirror.Examples.FpsArena.Scripts
                 previousLook = gunHolder.transform.rotation;
             }
 
-            lineRenderer.enabled = false;
+            if(lineRenderer is not null) lineRenderer.enabled = false;
             transform.position = transientPosition;
             transform.rotation = transientRotation;
 
@@ -335,8 +386,19 @@ namespace Mirror.Examples.FpsArena.Scripts
             nextInputs.Jump = Input.GetKey(KeyCode.Space);
             nextInputs.Run = Input.GetKey(KeyCode.LeftShift);
             nextInputs.Crouch = Input.GetKey(KeyCode.LeftControl);
+            nextInputs.Reload = Input.GetKey(KeyCode.R);
             nextInputs.LeftMouse = Input.GetMouseButton(0);
             nextInputs.RightMouse = Input.GetMouseButton(1);
+
+            float scrollInput = Input.GetAxis(MouseScrollInput);
+            if (scrollInput > 0)
+                nextInputs.ActiveWeapon = (WeaponType)(((byte)activeWeapon + 1) % 4);
+            else if (scrollInput < 0)
+                nextInputs.ActiveWeapon = (WeaponType)(((byte)activeWeapon == 0 ? 3 : (byte)activeWeapon - 1));
+            else if (Input.GetKey(KeyCode.Alpha1)) nextInputs.ActiveWeapon = WeaponType.Pistol;
+            else if (Input.GetKey(KeyCode.Alpha2)) nextInputs.ActiveWeapon = WeaponType.Rifle;
+            else if (Input.GetKey(KeyCode.Alpha3)) nextInputs.ActiveWeapon = WeaponType.Shotgun;
+            else if (Input.GetKey(KeyCode.Alpha4)) nextInputs.ActiveWeapon = WeaponType.Sniper;
 
             // Store move as 2d axis
             nextInputs.MoveAxis = new Vector2(Input.GetAxisRaw(VerticalInput), Input.GetAxisRaw(HorizontalInput));
@@ -403,7 +465,7 @@ namespace Mirror.Examples.FpsArena.Scripts
                 gunPosition.localPosition += new Vector3(
                     RightArm.transform.localPosition.x * 10f,
                     RightArm.transform.localPosition.y,
-                    RightArm.transform.localPosition.z * 100f
+                    RightArm.transform.localPosition.z * -100f
                 );
             // fancy tiny gun zoom in effect
             if (tickInputs.RightMouse)
@@ -415,12 +477,14 @@ namespace Mirror.Examples.FpsArena.Scripts
         {
             if (animator is null) return;
 
-            animator.Play(tickInputs.LeftMouse ? "ThirdPersonArmAnimationRecoil" : "New State");
+            var isFiring = tickInputs.LeftMouse && GetActiveGun().GetMagazine()>0 && playerState.SinceFire*Time.fixedDeltaTime < 0.12f;
 
-            animator.SetBool("IDLE", state == MoveState.IDLE);
-            animator.SetBool("WALKING", state == MoveState.WALKING);
-            animator.SetBool("RUNNING", state == MoveState.RUNNING);
-            animator.SetBool("AIRBORNE", state == MoveState.AIRBORNE);
+            animator.Play(isFiring ? "ThirdPersonArmAnimationRecoil" : "New State");
+
+            animator.SetBool("IDLE", moveState == MoveState.IDLE);
+            animator.SetBool("WALKING", moveState == MoveState.WALKING);
+            animator.SetBool("RUNNING", moveState == MoveState.RUNNING);
+            animator.SetBool("AIRBORNE", moveState == MoveState.AIRBORNE);
         }
 
         #endregion
